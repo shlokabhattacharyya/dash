@@ -119,6 +119,25 @@ def update_task(index, title, priority="medium", due_date=None):
         tasks[index]["due_date"] = due_date
         save_tasks(tasks)
 
+# return a new list ordered by urgency (does not touch the stored order):
+# incomplete before done, then overdue first, then priority, then soonest due
+def sort_tasks(tasks):
+    today = time.strftime("%Y-%m-%d")
+    rank = {"high": 0, "medium": 1, "low": 2}
+
+    def key(t):
+        due = t.get("due_date")
+        overdue = bool(due and due < today)
+        return (
+            t["done"],                        # incomplete (False) before done (True)
+            not overdue,                      # overdue (False) sorts ahead of on-time
+            rank.get(t.get("priority"), 1),   # high, then medium, then low
+            due or "9999-99-99",              # soonest due first; undated sinks last
+        )
+
+    # sorted() is stable, so tasks tied on every key keep their insertion order
+    return sorted(tasks, key=key)
+
 # roll over tasks display
 def rollover_tasks():
     # archive completed tasks, carry over incomplete (called at 11:59pm)

@@ -23,7 +23,7 @@ except ImportError:
 
 from state  import (
     load_tasks, save_tasks, add_task, mark_done,
-    remove_task, update_task,
+    remove_task, update_task, sort_tasks,
     load_timer, start_session, stop_session,
     pause_timer, resume_timer, get_timer_state,
     advance_phase, load_review, save_review, clear_review,
@@ -201,15 +201,20 @@ def _task_to_input(task):
         parts.append(task["due_date"])
     return " ".join(parts)
 
-# map a selection number (1-based) to the real index in the tasks list
-# only counts incomplete tasks
+# map a selection number (1-based, as shown in the sorted display) to the real
+# index in the stored tasks list. sorts the same way render does, then maps the
+# picked task back to its stored position by identity so mutators get the right row
 def _incomplete_index(tasks, pick):
+    ordered = sort_tasks(tasks)
     n = 0
-    for i, t in enumerate(tasks):
+    for t in ordered:
         if not t["done"]:
             n += 1
             if n == pick:
-                return i
+                for i, orig in enumerate(tasks):
+                    if orig is t:
+                        return i
+                return None
     return None
 
 

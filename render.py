@@ -5,6 +5,8 @@ from rich.console import Console
 from rich.text    import Text
 from rich         import print as rprint
 
+from state import sort_tasks
+
 console = Console(width=80)
 
 # priority colors
@@ -165,6 +167,10 @@ def _pad(text, width):
 # build dashboard
 def build_dashboard(tasks, events, timer, suggestion, weather_str, select_mode=None):
     lines = []
+
+    # order by urgency so the most pressing tasks sit at the top; this is also
+    # the order the numbered select labels follow (kept in sync with dash.py)
+    tasks = sort_tasks(tasks)
 
     now = time.strftime("%I:%M %p").lstrip("0").lower()
     date_str = time.strftime("%A, %B %-d").lower()

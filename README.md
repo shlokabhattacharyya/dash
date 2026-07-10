@@ -145,6 +145,7 @@ if ollama is not running, focus suggestions fall back to picking the highest pri
 
 ## notes
 
+- tasks are ordered by urgency: overdue first, then by priority, then by soonest due date; completed tasks sink to the bottom
 - weather auto-detects your location from your ip address and refreshes every 10 minutes
 - calendar refreshes every 5 minutes
 - the timer counts down live on screen, refreshing every second
