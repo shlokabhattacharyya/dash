@@ -9,6 +9,7 @@ or via tmux alias: alias dash='tmux new-session -A -s dash "python ~/dash/dash.p
 
 ### IMPORT LIBRARIES AND FUNCTIONS
 import sys
+import re
 import time
 import select
 import threading
@@ -22,7 +23,7 @@ except ImportError:
 
 from state  import (
     load_tasks, save_tasks, add_task, mark_done,
-    remove_task, rename_task,
+    remove_task, update_task,
     load_timer, start_session, stop_session,
     pause_timer, resume_timer, get_timer_state,
     advance_phase, load_review, save_review, clear_review,
@@ -178,6 +179,28 @@ def handle_phase_transition(timer):
 
 ### INPUT HANDLING
 
+# parse a raw input line into validated (title, priority, due_date)
+def _parse_task_fields(raw):
+    parsed = _local_parse(raw)
+    title = str(parsed.get("title") or raw).strip()[:200].lower()
+    priority = parsed.get("priority", "medium")
+    if priority not in ("low", "medium", "high"):
+        priority = "medium"
+    due_date = parsed.get("due_date")
+    if due_date and not re.match(r"^\d{4}-\d{2}-\d{2}$", str(due_date)):
+        due_date = None
+    return title, priority, due_date
+
+# rebuild the natural-language form of a task so the edit buffer round-trips
+# (only non-default priority and a set due date are appended)
+def _task_to_input(task):
+    parts = [task["title"]]
+    if task.get("priority") and task["priority"] != "medium":
+        parts.append(task["priority"])
+    if task.get("due_date"):
+        parts.append(task["due_date"])
+    return " ".join(parts)
+
 # map a selection number (1-based) to the real index in the tasks list
 # only counts incomplete tasks
 def _incomplete_index(tasks, pick):
@@ -201,26 +224,13 @@ def handle_keypress(ch, timer):
 
             # submit new task
             if _input_mode == "add" and raw:
-                parsed = _local_parse(raw)
-                title = str(parsed.get("title") or raw).strip()[:200].lower()
-                priority = parsed.get("priority", "medium")
-                due_date = parsed.get("due_date")
-
-                # enforce allowed values
-                if priority not in ("low", "medium", "high"):
-                    priority = "medium"
-
-                # validate due_date is a real date string, not arbitrary text
-                if due_date:
-                    import re
-                    if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(due_date)):
-                        due_date = None
-
+                title, priority, due_date = _parse_task_fields(raw)
                 add_task(title, priority, due_date)
 
-            # submit rename
+            # submit edit — re-parse so title, priority, and due date can all change
             elif _input_mode == "rename" and raw and _rename_index is not None:
-                rename_task(_rename_index, raw[:200].lower())
+                title, priority, due_date = _parse_task_fields(raw)
+                update_task(_rename_index, title, priority, due_date)
 
             _input_mode = None
             _input_buffer = ""
@@ -261,7 +271,7 @@ def handle_keypress(ch, timer):
                     remove_task(idx)
                 elif _select_mode == "edit":
                     _input_mode = "rename"
-                    _input_buffer = tasks[idx]["title"]
+                    _input_buffer = _task_to_input(tasks[idx])
                     _rename_index = idx
 
             _select_mode = None

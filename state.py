@@ -110,6 +110,15 @@ def rename_task(index, new_title):
         tasks[index]["title"] = new_title
         save_tasks(tasks)
 
+# update a task's editable fields (title, priority, due date)
+def update_task(index, title, priority="medium", due_date=None):
+    tasks = load_tasks()
+    if 0 <= index < len(tasks):
+        tasks[index]["title"] = title
+        tasks[index]["priority"] = priority
+        tasks[index]["due_date"] = due_date
+        save_tasks(tasks)
+
 # roll over tasks display
 def rollover_tasks():
     # archive completed tasks, carry over incomplete (called at 11:59pm)

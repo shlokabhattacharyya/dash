@@ -85,7 +85,7 @@ then just type `dash` in any terminal. close the window and it keeps running. ty
 | `a` | add a task (type naturally, e.g. "call dentist friday high priority") |
 | `d` | mark a task as done |
 | `x` | delete a task |
-| `e` | edit/rename a task |
+| `e` | edit a task — retype naturally to change title, priority, or due date |
 | `s` | start / pause / resume the pomodoro timer |
 | `n` | skip to the next phase (only while the timer is running) |
 | `r` | generate and show today's review on demand |
