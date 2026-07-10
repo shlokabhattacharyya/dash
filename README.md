@@ -1,6 +1,6 @@
 # dash
 
-a terminal productivity dashboard. tasks, calendar, weather, and a pomodoro timer in one plain-text view. ai-powered via ollama (local, free, no api key). requires internet connection for weather and google calendar.
+a terminal productivity dashboard. tasks, calendar, weather, and a pomodoro timer in one plain-text view. ai-powered via ollama (local, free, no api key). requires internet connection for weather and google calendar. made for standard-size 80x24 terminal window.
 
 
 ## quick start
