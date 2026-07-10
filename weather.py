@@ -38,6 +38,17 @@ WMO_CODES = {
     99: "thunderstorm",
 }
 
+# a small icon per weather code for the dashboard line
+WMO_GLYPHS = {
+    0: "☀", 1: "☀", 2: "⛅", 3: "☁",
+    45: "☁", 48: "☁",
+    51: "☂", 53: "☂", 55: "☂",
+    61: "☂", 63: "☂", 65: "☂",
+    71: "❄", 73: "❄", 75: "❄",
+    80: "☂", 81: "☂", 82: "☂",
+    95: "⚡", 99: "⚡",
+}
+
 
 ### AUTO DETECT LAT/LON FROM IP ADDRESSS
 def get_location():
@@ -82,6 +93,7 @@ def fetch_weather():
         day = d["daily"]
 
         desc = WMO_CODES.get(c["weathercode"], "unknown")
+        glyph = WMO_GLYPHS.get(c["weathercode"], "•")
 
         # convert wind direction degrees to cardinal
         deg = c.get("winddirection_10m", 0)
@@ -100,6 +112,7 @@ def fetch_weather():
             "city": city,
             "temp_label": units["temp_label"],
             "wind_label": units["wind_label"],
+            "glyph": glyph,
         }
 
         _cache["data"] = data
@@ -110,14 +123,16 @@ def fetch_weather():
         return {
             "temp": "--", "desc": "unavailable", "hi": "--", "lo": "--",
             "wind": "--", "wind_dir": "--", "humidity": "--", "rain": "--",
-            "city": "--", "temp_label": "°f", "wind_label": "mph",
+            "city": "--", "temp_label": "°f", "wind_label": "mph", "glyph": "•",
         }
 
 
 ### FORMAT WEATHER (single line for dashboard)
 def fmt_weather(w):
+    glyph = w.get("glyph", "")
+    lead = f"{glyph}  " if glyph else ""
     return (
-        f"{w['temp']}{w.get('temp_label', '°f')} · {w['desc']} · "
+        f"{lead}{w['temp']}{w.get('temp_label', '°f')} · {w['desc']} · "
         f"hi {w['hi']} lo {w['lo']} · "
         f"wind {w['wind']}{w.get('wind_label', 'mph')} {w['wind_dir']} · "
         f"rain {w['rain']}% · "

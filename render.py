@@ -9,11 +9,25 @@ from state import sort_tasks
 
 console = Console(width=80)
 
+# color palette (hex, tuned for a dark terminal). truecolor terminals render
+# these exactly; others degrade gracefully. foreground only — the terminal
+# supplies its own background
+PALETTE = {
+    "high":   "#f7768e",   # red
+    "medium": "#e0af68",   # amber
+    "low":    "#9ece6a",   # green
+    "accent": "#7dcfff",   # active timer / current event
+    "rest":   "#9ece6a",   # break phase
+    "bright": "#e8e8ef",   # headings
+    "muted":  "#8a8a99",   # secondary text
+    "faint":  "#454552",   # dividers / structure
+}
+
 # priority colors
 PRIORITY_COLORS = {
-    "high": "red",
-    "medium": "yellow",
-    "low": "green",
+    "high":   PALETTE["high"],
+    "medium": PALETTE["medium"],
+    "low":    PALETTE["low"],
 }
 
 DIVIDER = "─" * 80
@@ -61,27 +75,28 @@ def render_task(task, pick_num=None, col_width=28):
     done = task["done"]
     color = PRIORITY_COLORS.get(task["priority"], "white")
     due_str = _fmt_due(task.get("due_date")) if not done else ""
-    prefix_len = 4  # "[ ] " or "[x] " or "[1] "
+
+    # leading marker: check-mark for done, pick number in select mode,
+    # otherwise a priority-colored dot
+    if done:
+        prefix, prefix_style = "✓ ", PALETTE["muted"]
+    elif pick_num is not None:
+        prefix, prefix_style = f"[{pick_num}] ", PALETTE["accent"]
+    else:
+        prefix, prefix_style = "● ", color
 
     # budget for title: column width minus prefix, minus due date and its leading space
     due_space = (1 + len(due_str)) if due_str else 0
-    max_title = col_width - prefix_len - due_space
+    max_title = col_width - len(prefix) - due_space
     title = task["title"]
     if len(title) > max_title:
         title = title[:max_title - 1] + "…"
 
-    if done:
-        t.append("[x] ", style="dim")
-        t.append(title, style="dim strike")
-    elif pick_num is not None:
-        t.append(f"[{pick_num}] ", style="cyan")
-        t.append(title, style=color)
-    else:
-        t.append("[ ] ", style="dim")
-        t.append(title, style=color)
+    t.append(prefix, style=prefix_style)
+    t.append(title, style=f'{PALETTE["muted"]} strike' if done else color)
 
     if due_str:
-        due_style = "red" if due_str == "overdue" else "dim"
+        due_style = PALETTE["high"] if due_str == "overdue" else PALETTE["muted"]
         t.append(f" {due_str}", style=due_style)
 
     return t
@@ -150,9 +165,10 @@ def render_calendar(events):
         if is_now:
             now_marker = True
             line = f"▶ {time_str:<7} {title}"
+            lines.append(("now", line))
         else:
             line = f"  {time_str:<7} {title}"
-        lines.append(("row", line))
+            lines.append(("row", line))
 
     while len(lines) < 5:
         lines.append(("empty", ""))
@@ -178,15 +194,15 @@ def build_dashboard(tasks, events, timer, suggestion, weather_str, select_mode=N
     # header (date left, time right, total 80 chars)
     header = Text()
     padding = 80 - len(date_str) - len(now)
-    header.append(date_str, style="bold white")
+    header.append(date_str, style=f'bold {PALETTE["bright"]}')
     header.append(" " * max(padding, 1))
-    header.append(now, style="dim")
+    header.append(now, style=PALETTE["muted"])
     lines.append(header)
     lines.append("")
 
-    lines.append(Text(weather_str, style="dim"))
+    lines.append(Text(weather_str, style=PALETTE["muted"]))
     lines.append("")
-    lines.append(DIVIDER)
+    lines.append(Text(DIVIDER, style=PALETTE["faint"]))
 
     focus_label = "focus"
     if timer:
@@ -198,9 +214,9 @@ def build_dashboard(tasks, events, timer, suggestion, weather_str, select_mode=N
 
     # column headers — tasks(28) + cal(28) + focus(rest)
     col_header = Text()
-    col_header.append(_pad("tasks", 28), style="dim")
-    col_header.append(_pad("calendar", 28), style="dim")
-    col_header.append(focus_label, style="dim")
+    col_header.append(_pad("tasks", 28), style=PALETTE["muted"])
+    col_header.append(_pad("calendar", 28), style=PALETTE["muted"])
+    col_header.append(focus_label, style=PALETTE["muted"])
     lines.append(col_header)
     lines.append("")
 
@@ -218,6 +234,12 @@ def build_dashboard(tasks, events, timer, suggestion, weather_str, select_mode=N
     focus_lines = render_focus_panel(timer, suggestion)
     row_count = max(len(task_lines), len(cal_lines), len(focus_lines))
 
+    # focus panel glows by phase: accent while working, green on a break
+    if timer:
+        focus_color = PALETTE["rest"] if timer["label"] == "break" else PALETTE["accent"]
+    else:
+        focus_color = PALETTE["muted"]
+
     for i in range(row_count):
         row = Text()
 
@@ -230,41 +252,41 @@ def build_dashboard(tasks, events, timer, suggestion, weather_str, select_mode=N
         else:
             row.append(" " * 28)
 
-        # calendar column (width 28)
+        # calendar column (width 28) — active event pops, everything else recedes
         if i < len(cal_lines):
             kind, text = cal_lines[i][0], cal_lines[i][1]
             padded = _pad(text, 28)
-            if kind == "sep":
-                row.append(padded, style="dim")
+            if kind == "now":
+                row.append(padded, style=PALETTE["accent"])
             else:
-                row.append(padded)
+                row.append(padded, style=PALETTE["muted"])
         else:
             row.append(" " * 28)
 
         # focus column
         if i < len(focus_lines):
-            row.append(focus_lines[i], style="cyan" if timer else "dim")
+            row.append(focus_lines[i], style=focus_color)
 
         lines.append(row)
 
     lines.append("")
-    lines.append(DIVIDER)
+    lines.append(Text(DIVIDER, style=PALETTE["faint"]))
     return lines
 
 # display command bar
 def render_command_bar(running):
     if running:
-        return Text("a add  d done  x del  e edit  s stop  n skip  r review  q quit", style="dim")
+        return Text("a add  d done  x del  e edit  s stop  n skip  r review  q quit", style=PALETTE["muted"])
     else:
-        return Text("a add  d done  x del  e edit  s start  r review  q quit", style="dim")
+        return Text("a add  d done  x del  e edit  s start  r review  q quit", style=PALETTE["muted"])
 
 # display input bar
 def render_input_bar(prompt_text, mode="add"):
     t = Text()
     label = "edit> " if mode == "rename" else "> "
-    t.append(label, style="green")
-    t.append(prompt_text, style="white")
-    t.append("_", style="green blink")
+    t.append(label, style=PALETTE["accent"])
+    t.append(prompt_text, style=PALETTE["bright"])
+    t.append("_", style=f'{PALETTE["accent"]} blink')
     return t
 
 # display select bar (pick a task by number)
@@ -272,10 +294,10 @@ def render_select_bar(mode):
     labels = {"done": "done", "delete": "del", "edit": "edit"}
     action = labels.get(mode, mode)
     t = Text()
-    t.append(f"{action}: ", style="cyan")
-    t.append("pick a task (1-9)  ", style="dim")
-    t.append("esc", style="dim")
-    t.append(" cancel", style="dim")
+    t.append(f"{action}: ", style=PALETTE["accent"])
+    t.append("pick a task (1-9)  ", style=PALETTE["muted"])
+    t.append("esc", style=PALETTE["muted"])
+    t.append(" cancel", style=PALETTE["muted"])
     return t
 
 # display dashboard
@@ -306,23 +328,23 @@ def print_cycle_summary(stats, summary_text):
     sys.stdout.write("\033[2J\033[H")
     sys.stdout.flush()
     console.print("")
-    console.print(Text(DIVIDER, style="dim"))
+    console.print(Text(DIVIDER, style=PALETTE["faint"]))
     console.print("")
-    console.print(Text("cycle complete", style="bold white"))
+    console.print(Text("cycle complete", style=f'bold {PALETTE["bright"]}'))
     console.print("")
     stat_line = (
         f"{stats['pomos']} pomos  ·  "
         f"{stats['done']} tasks completed  ·  "
         f"{stats['overdue']} overdue"
     )
-    console.print(Text(stat_line, style="dim"))
+    console.print(Text(stat_line, style=PALETTE["muted"]))
     console.print("")
     for l in _wrap(summary_text, "→ ", "  ", 80):
-        console.print(Text(l, style="dim"))
+        console.print(Text(l, style=PALETTE["muted"]))
     console.print("")
-    console.print(Text("next cycle starting...", style="dim"))
+    console.print(Text("next cycle starting...", style=PALETTE["muted"]))
     console.print("")
-    console.print(Text(DIVIDER, style="dim"))
+    console.print(Text(DIVIDER, style=PALETTE["faint"]))
 
 # display review
 def print_review(review_text, stats, tasks):
@@ -330,9 +352,9 @@ def print_review(review_text, stats, tasks):
     sys.stdout.flush()
     date_str = time.strftime("%A, %B %-d").lower()
     console.print("")
-    console.print(Text(DIVIDER, style="dim"))
+    console.print(Text(DIVIDER, style=PALETTE["faint"]))
     console.print("")
-    console.print(Text(date_str, style="bold white"))
+    console.print(Text(date_str, style=f'bold {PALETTE["bright"]}'))
     console.print("")
     stat_line = (
         f"{stats['pomos']} pomos  ·  "
@@ -340,22 +362,22 @@ def print_review(review_text, stats, tasks):
         f"{stats['carried']} carried over  ·  "
         f"{stats['overdue']} overdue"
     )
-    console.print(Text(stat_line, style="dim"))
+    console.print(Text(stat_line, style=PALETTE["muted"]))
     console.print("")
     done_tasks = [t for t in tasks if t["done"]]
     left_tasks = [t for t in tasks if not t["done"]]
     if done_tasks:
-        console.print(Text("completed", style="dim"))
+        console.print(Text("completed", style=PALETTE["muted"]))
         for t in done_tasks:
-            console.print(Text(f"[x] {t['title']}", style="dim strike"))
+            console.print(Text(f"[x] {t['title']}", style=f'{PALETTE["muted"]} strike'))
         console.print("")
     if left_tasks:
-        console.print(Text("carried over", style="dim"))
+        console.print(Text("carried over", style=PALETTE["muted"]))
         for t in left_tasks:
             color = PRIORITY_COLORS.get(t["priority"], "white")
             console.print(Text(f"[ ] {t['title']}", style=color))
         console.print("")
     for l in _wrap(review_text, "→ ", "  ", 80):
-        console.print(Text(l, style="dim"))
+        console.print(Text(l, style=PALETTE["muted"]))
     console.print("")
-    console.print(Text(DIVIDER, style="dim"))
+    console.print(Text(DIVIDER, style=PALETTE["faint"]))
