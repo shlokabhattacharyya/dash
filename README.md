@@ -87,6 +87,7 @@ then just type `dash` in any terminal. close the window and it keeps running. ty
 | `x` | delete a task |
 | `e` | edit/rename a task |
 | `s` | start / pause / resume the pomodoro timer |
+| `n` | skip to the next phase (only while the timer is running) |
 | `r` | generate and show today's review on demand |
 | `q` | quit and wipe the timer (tasks are always saved) |
 
