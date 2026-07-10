@@ -171,6 +171,21 @@ def resume_timer():
     state["pause_start"] = None
     save_timer(state)
 
+# force the current phase to finish immediately (manual skip)
+def skip_phase():
+    state = load_timer()
+    if not state:
+        return
+    _, duration = CYCLE[state["phase_index"]]
+    # backdate the start so the phase reads as done on the next tick; the main
+    # loop's handle_phase_transition then advances it like a natural boundary,
+    # firing the same notification / focus suggestion / cycle summary
+    state["phase_start"] = time.time() - duration - 1
+    state["remaining"] = 0
+    state["paused"] = False
+    state["pause_start"] = None
+    save_timer(state)
+
 # returns enriched timer state with computed fields
 def get_timer_state():
     state = load_timer()

@@ -248,7 +248,7 @@ def build_dashboard(tasks, events, timer, suggestion, weather_str, select_mode=N
 # display command bar
 def render_command_bar(running):
     if running:
-        return Text("a add  d done  x del  e edit  s stop   r review  q quit", style="dim")
+        return Text("a add  d done  x del  e edit  s stop  n skip  r review  q quit", style="dim")
     else:
         return Text("a add  d done  x del  e edit  s start  r review  q quit", style="dim")
 

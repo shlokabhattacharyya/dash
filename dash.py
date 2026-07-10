@@ -26,7 +26,7 @@ from state  import (
     load_timer, start_session, stop_session,
     pause_timer, resume_timer, get_timer_state,
     advance_phase, load_review, save_review, clear_review,
-    rollover_tasks, CYCLE,
+    rollover_tasks, CYCLE, skip_phase,
 )
 from weather import fetch_weather, fmt_weather
 from render  import (
@@ -304,6 +304,11 @@ def handle_keypress(ch, timer):
                 tasks = load_tasks()
                 _suggestion = suggest_focus(tasks, 1, 3, 0)
             threading.Thread(target=_gen, daemon=True).start()
+
+    # skip to the next phase (only meaningful with an active session)
+    elif ch == "n":
+        if timer:
+            skip_phase()
 
     elif ch == "r":
         # manual review
