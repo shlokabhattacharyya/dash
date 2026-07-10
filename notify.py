@@ -2,17 +2,15 @@
 import sys
 import subprocess
 
-# toggles for the two alert channels (wired to the config file later)
-NOTIFY_DESKTOP = True    # os-level popup notification
-NOTIFY_SOUND   = True    # terminal bell
+from settings import CONFIG
 
 _SYSTEM = sys.platform   # "darwin", "linux", "win32", ...
 
 
 ### FUNCTIONS
-# ring the terminal bell
+# ring the terminal bell — cheap and always available
 def _bell():
-    if not NOTIFY_SOUND:
+    if not CONFIG["notify_sound"]:
         return
     try:
         sys.stdout.write("\a")
@@ -23,7 +21,7 @@ def _bell():
 
 # fire a desktop notification without blocking — fails silently if unsupported
 def _desktop(title, message):
-    if not NOTIFY_DESKTOP:
+    if not CONFIG["notify_desktop"]:
         return
     try:
         if _SYSTEM == "darwin":
@@ -44,7 +42,7 @@ def _desktop(title, message):
             )
         # other platforms fall through to the bell only
     except Exception:
-        # notifier not installed or not permitted
+        # notifier not installed or not permitted — the bell already covers it
         pass
 
 

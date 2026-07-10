@@ -4,6 +4,8 @@ import json
 import re
 import time
 
+from state import POMOS_PER_CYCLE
+
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "llama3"
 
@@ -161,7 +163,7 @@ def generate_cycle_summary(tasks, pomos_done):
     prompt = f"""you are a productivity assistant. write a short 1-2 sentence summary for the end of a pomodoro cycle.
 
                 stats:
-                    - pomos completed this cycle: 3
+                    - pomos completed this cycle: {POMOS_PER_CYCLE}
                     - total pomos today: {pomos_done}
                     - tasks completed today: {len(done_today)}
                     - tasks remaining: {len(incomplete)}

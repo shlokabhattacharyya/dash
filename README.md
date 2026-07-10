@@ -113,6 +113,8 @@ the cycle runs automatically and repeats forever:
 work 25m → break 5m → work 25m → break 5m → work 25m → break 15m → repeat
 ```
 
+durations and the number of work phases per cycle are configurable — see [configuration](#configuration).
+
 - at the start of each work phase, ollama suggests which task to focus on
 - at the end of each full cycle, a 5-second summary screen appears while the next cycle starts underneath
 - pressing `q` wipes the timer but never your tasks
@@ -141,6 +143,33 @@ all ai runs locally via ollama — nothing is sent to the cloud.
 - **daily review** — a full summary auto-generated at 11:59pm and shown the next morning, or on demand with `r`
 
 if ollama is not running, focus suggestions fall back to picking the highest priority task, and summaries fall back to a simple stat line. everything else works normally.
+
+
+## configuration
+
+on first run dash writes a `~/.dash/config.json` with sensible defaults. edit it to customize, then restart dash to apply. any missing or invalid value silently falls back to the default, so you can't break the app by mistyping.
+
+| key | default | meaning |
+|-----|---------|---------|
+| `work_minutes` | `25` | length of each work phase |
+| `short_break_minutes` | `5` | length of the breaks between work phases |
+| `long_break_minutes` | `15` | length of the break at the end of a cycle |
+| `pomos_per_cycle` | `3` | work phases before the long break |
+| `units` | `"imperial"` | `"imperial"` (°f, mph) or `"metric"` (°c, km/h) |
+| `notify_desktop` | `true` | os popup notification on phase change |
+| `notify_sound` | `true` | terminal bell on phase change |
+| `latitude` / `longitude` / `city` | `null` | weather location override; leave null to auto-detect from ip |
+
+for example, a 50/10 cycle with two pomos and metric weather:
+
+```json
+{
+  "work_minutes": 50,
+  "short_break_minutes": 10,
+  "pomos_per_cycle": 2,
+  "units": "metric"
+}
+```
 
 
 ## notes

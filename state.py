@@ -3,24 +3,33 @@ import json
 import os
 import time
 
+from settings import CONFIG
+
 # paths for all state files
 DASH_DIR = os.path.expanduser("~/.dash")
 TASKS_FILE = os.path.join(DASH_DIR, "tasks.json")
 TIMER_FILE = os.path.join(DASH_DIR, "timer.json")
 REVIEW_FILE = os.path.join(DASH_DIR, "review.json")
 
-# pomodoro cycle
-CYCLE = [
-    ("work",  25 * 60),
-    ("break", 5  * 60),
-    ("work",  25 * 60),
-    ("break", 5  * 60),
-    ("work",  25 * 60),
-    ("break", 15 * 60),
-]
+# pomodoro cycle — built from config: N work phases, each followed by a short
+# break, except the last which is followed by the long break
+def _build_cycle():
+    work  = CONFIG["work_minutes"] * 60
+    short = CONFIG["short_break_minutes"] * 60
+    long_ = CONFIG["long_break_minutes"] * 60
+    n     = CONFIG["pomos_per_cycle"]
+    cycle = []
+    for k in range(n):
+        cycle.append(("work", work))
+        cycle.append(("break", short if k < n - 1 else long_))
+    return cycle
+
+CYCLE = _build_cycle()
 
 WORK_PHASES  = [i for i, (label, _) in enumerate(CYCLE) if label == "work"]
 BREAK_PHASES = [i for i, (label, _) in enumerate(CYCLE) if label == "break"]
+POMOS_PER_CYCLE  = len(WORK_PHASES)
+LONG_BREAK_INDEX = len(CYCLE) - 1     # the long break is always the final phase
 
 
 ### FUNCTIONS
@@ -221,6 +230,10 @@ def get_timer_state():
         return None
 
     i = state["phase_index"]
+    if i < 0 or i >= len(CYCLE):
+        # cycle config changed while a timer was persisted — drop the stale session
+        stop_session()
+        return None
     label, duration = CYCLE[i]
     now = time.time()
 
@@ -236,10 +249,10 @@ def get_timer_state():
     pomo_num   = (work_index + 1) if work_index is not None else None
     pomo_total = len(WORK_PHASES)
 
-    # short vs long break
+    # short vs long break (the long break is always the final phase of the cycle)
     break_type = None
     if label == "break":
-        break_type = "long" if duration == 15 * 60 else "short"
+        break_type = "long" if i == LONG_BREAK_INDEX else "short"
 
     return {
         **state,
@@ -280,7 +293,10 @@ def advance_phase(state):
     new_state["duration"] = next_duration
     new_state["pomo_num"] = (work_index + 1) if work_index is not None else None
     new_state["pomo_total"] = len(WORK_PHASES)
-    new_state["break_type"] = "long" if next_label == "break" and next_duration == 15 * 60 else ("short" if next_label == "break" else None)
+    if next_label == "break":
+        new_state["break_type"] = "long" if next_index == LONG_BREAK_INDEX else "short"
+    else:
+        new_state["break_type"] = None
     new_state["phase_done"] = False
 
     return new_state

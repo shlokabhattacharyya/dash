@@ -2,8 +2,16 @@
 import httpx
 import time
 
+from settings import CONFIG
+
 _cache = {"data": None, "fetched_at": 0}
-CACHE_TTL = 600 
+CACHE_TTL = 600
+
+# map the config "units" choice to api params and display labels
+_UNITS = {
+    "imperial": {"temp": "fahrenheit", "wind": "mph", "temp_label": "°f", "wind_label": "mph"},
+    "metric":   {"temp": "celsius",    "wind": "kmh", "temp_label": "°c", "wind_label": "km/h"},
+}
 
 
 ### CONVERT WEATHER CODES TO DESCRIPTION
@@ -33,6 +41,9 @@ WMO_CODES = {
 
 ### AUTO DETECT LAT/LON FROM IP ADDRESSS
 def get_location():
+    # use an explicit override from config if one is set
+    if CONFIG.get("latitude") is not None and CONFIG.get("longitude") is not None:
+        return CONFIG["latitude"], CONFIG["longitude"], (CONFIG.get("city") or "custom")
     try:
         r = httpx.get("https://ipapi.co/json", timeout=5)
         d = r.json()
@@ -50,6 +61,7 @@ def fetch_weather():
 
     try:
         lat, lon, city = get_location()
+        units = _UNITS.get(CONFIG["units"], _UNITS["imperial"])
 
         r = httpx.get(
             "https://api.open-meteo.com/v1/forecast",
@@ -58,8 +70,8 @@ def fetch_weather():
                 "longitude": lon,
                 "current": ["temperature_2m", "weathercode", "windspeed_10m", "relativehumidity_2m", "winddirection_10m"],
                 "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_probability_max"],
-                "temperature_unit": "fahrenheit",
-                "windspeed_unit": "mph",
+                "temperature_unit": units["temp"],
+                "windspeed_unit": units["wind"],
                 "forecast_days": 1,
                 "timezone": "auto",
             },
@@ -86,6 +98,8 @@ def fetch_weather():
             "humidity": round(c["relativehumidity_2m"]),
             "rain": day["precipitation_probability_max"][0],
             "city": city,
+            "temp_label": units["temp_label"],
+            "wind_label": units["wind_label"],
         }
 
         _cache["data"] = data
@@ -96,16 +110,16 @@ def fetch_weather():
         return {
             "temp": "--", "desc": "unavailable", "hi": "--", "lo": "--",
             "wind": "--", "wind_dir": "--", "humidity": "--", "rain": "--",
-            "city": "--",
+            "city": "--", "temp_label": "°f", "wind_label": "mph",
         }
 
 
 ### FORMAT WEATHER (single line for dashboard)
 def fmt_weather(w):
     return (
-        f"{w['temp']}°f · {w['desc']} · "
+        f"{w['temp']}{w.get('temp_label', '°f')} · {w['desc']} · "
         f"hi {w['hi']} lo {w['lo']} · "
-        f"wind {w['wind']}mph {w['wind_dir']} · "
+        f"wind {w['wind']}{w.get('wind_label', 'mph')} {w['wind_dir']} · "
         f"rain {w['rain']}% · "
         f"humid {w['humidity']}%"
     )

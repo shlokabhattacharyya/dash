@@ -27,7 +27,7 @@ from state  import (
     load_timer, start_session, stop_session,
     pause_timer, resume_timer, get_timer_state,
     advance_phase, load_review, save_review, clear_review,
-    rollover_tasks, CYCLE, skip_phase,
+    rollover_tasks, CYCLE, skip_phase, POMOS_PER_CYCLE,
 )
 from weather import fetch_weather, fmt_weather
 from render  import (
@@ -153,7 +153,7 @@ def handle_phase_transition(timer):
     elif timer["label"] == "break":
         was_last_work = (
             _last_phase == "work" and
-            timer["phase_index"] == 5  # index 5 is the long break
+            timer["break_type"] == "long"  # the long break marks the end of a full cycle
         )
 
         # generate cycle summary in background then show it
@@ -165,7 +165,7 @@ def handle_phase_transition(timer):
             over = [t for t in left if t.get("due_date") and t["due_date"] < today]
             t_now = get_timer_state()
             pomos = t_now["pomos_done"] if t_now else 0
-            stats = {"pomos": 3, "done": len(done), "overdue": len(over)}
+            stats = {"pomos": POMOS_PER_CYCLE, "done": len(done), "overdue": len(over)}
             text = generate_cycle_summary(tasks, pomos)
             print_cycle_summary(stats, text)
             time.sleep(5)
