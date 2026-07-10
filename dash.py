@@ -40,6 +40,7 @@ from ai import (
     generate_cycle_summary, generate_daily_review,
 )
 from gcal import get_display_events
+from notify import notify
 
 
 ### GLOBAL
@@ -111,6 +112,17 @@ def get_input_char():
 
 
 ### PHASE TRANSITION HANDLING
+# build a short message for the new phase and fire the alert (bell + desktop popup)
+def _notify_phase_change(timer):
+    mins = timer["duration"] // 60
+    if timer["label"] == "work":
+        notify("back to work", f"pomo {timer['pomo_num']}/{timer['pomo_total']} · {mins} min focus")
+    elif timer["break_type"] == "long":
+        notify("cycle complete", f"long break · {mins} min")
+    else:
+        notify("pomo done", f"short break · {mins} min")
+
+
 def handle_phase_transition(timer):
     global _suggestion, _last_phase
 
@@ -119,6 +131,9 @@ def handle_phase_transition(timer):
 
     # advance to next phase
     timer = advance_phase(timer)
+
+    # alert the user that the phase just changed
+    _notify_phase_change(timer)
 
     # new work phase - generate focus suggestion in background
     if timer["label"] == "work":
